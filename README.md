@@ -1,5 +1,11 @@
 # eol-check
 
+[![npm version](https://badge.fury.io/js/eol-check.svg)](https://www.npmjs.com/package/eol-check)
+[![CI](https://github.com/abhishekpanda0620/eol-check/actions/workflows/ci.yml/badge.svg)](https://github.com/abhishekpanda0620/eol-check/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![codecov](https://codecov.io/gh/abhishekpanda0620/eol-check/branch/main/graph/badge.svg)](https://codecov.io/gh/abhishekpanda0620/eol-check)
+
+
 A CLI tool to check the End-Of-Life (EOL) status of your development environment and project dependencies.
 
 ## Features
