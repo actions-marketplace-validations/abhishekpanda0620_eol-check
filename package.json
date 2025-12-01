@@ -15,9 +15,17 @@
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write \"src/**/*.ts\""
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["eol", "end-of-life", "cli", "version-check", "security"],
+  "author": "Abhishek Panda <abhishekpanda0620@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abhishekpanda0620/eol-check.git"
+  },
+  "bugs": {
+    "url": "https://github.com/abhishekpanda0620/eol-check/issues"
+  },
+  "homepage": "https://github.com/abhishekpanda0620/eol-check#readme",
   "type": "commonjs",
   "devDependencies": {
     "@types/jest": "^30.0.0",
