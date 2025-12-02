@@ -11,7 +11,7 @@ const program = new Command();
 program
   .name('eol-check')
   .description('Check EOL status of your environment')
-  .version('1.0.0')
+  .version('1.1.1')
   .option('--json', 'Output results as JSON')
   .option('--verbose', 'Show verbose output')
   .option('--refresh-cache', 'Force refresh cache from API');
