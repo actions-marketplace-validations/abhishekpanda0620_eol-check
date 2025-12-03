@@ -12,12 +12,14 @@ const program = new Command();
 
 program
   .name('eol-check')
-  .description('Check EOL status of your environment')
-  .version('1.3.1')
+  .description('Check End of Life (EOL) status of your development environment and project dependencies')
+  .version('1.3.2')
   .option('--json', 'Output results as JSON')
   .option('--html <filename>', 'Generate HTML report to specified file')
   .option('--verbose', 'Show verbose output')
-  .option('--refresh-cache', 'Force refresh cache from API');
+  .option('--refresh-cache', 'Force refresh cache from API')
+  .option('--version', 'Show version number')
+  .option('--help', 'Show help information');
 
 program.parse(process.argv);
 const options = program.opts();
