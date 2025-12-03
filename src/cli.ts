@@ -17,9 +17,7 @@ program
   .option('--json', 'Output results as JSON')
   .option('--html <filename>', 'Generate HTML report to specified file')
   .option('--verbose', 'Show verbose output')
-  .option('--refresh-cache', 'Force refresh cache from API')
-  .option('--version', 'Show version number')
-  .option('--help', 'Show help information');
+  .option('--refresh-cache', 'Force refresh cache from API');
 
 program.parse(process.argv);
 const options = program.opts();
