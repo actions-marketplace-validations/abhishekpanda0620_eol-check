@@ -36,5 +36,5 @@ outputs:
     description: 'Summary statistics (total, ok, warn, err counts)'
 
 runs:
-  using: 'node20'
+  using: 'node22'
   main: 'dist/actionWrapper.js'
