@@ -103,6 +103,37 @@ eol-check --scan-infra  # Scan infrastructure files
 
 ---
 
+
+### Dockerfile Base Image Scanner
+**Status:** Planned  
+**Priority:** High
+
+Scan `Dockerfile` to detect base images and their versions (e.g., `FROM node:18`, `FROM python:3.9-alpine`).
+
+```bash
+eol-check --scan-docker  # Scan Dockerfiles
+```
+
+---
+
+### Unified Configuration
+**Status:** Planned  
+**Priority:** Medium
+
+Support a configuration file to manage all flags, custom data, and exclusions.
+
+```json
+// .eolrc.json
+{
+  "failOnEol": true,
+  "scanAi": true,
+  "exclude": ["test/", "legacy/"],
+  "customProducts": [...]
+}
+```
+
+---
+
 ### Custom Data Provider
 Allow users to define custom EOL data via JSON/YAML files:
 
@@ -171,6 +202,19 @@ Improved integrations for CI/CD pipelines.
 ```bash
 eol-check --output sarif > results.sarif
 eol-check --fail-on eol --warn-on deprecated
+```
+
+---
+
+
+### Markdown Report Format
+**Status:** Planned  
+**Priority:** High
+
+Generate reports in Markdown format, perfect for posting as comments in Pull Requests (GitHub/GitLab).
+
+```bash
+eol-check --reporter markdown > report.md
 ```
 
 ---
@@ -322,6 +366,17 @@ Check EOL status for database schemas, container images, and package registries:
 - Database migrations and schema versions
 - Internal package registries
 - Kubernetes manifests (apiVersion deprecations)
+
+---
+
+### Expanded Language Support
+**Status:** Idea  
+**Priority:** Medium
+
+Add support for ecosystem-specific dependency files:
+- **Java**: `pom.xml` (Maven), `build.gradle` (Gradle)
+- **.NET**: `.csproj`, `packages.config` (NuGet)
+- **Rust**: `Cargo.toml`
 
 ---
 
