@@ -12,6 +12,8 @@ import {
   SDK_TO_PROVIDER,
   MODEL_PATTERNS,
   AIModelCycle,
+  stripHtmlTags,
+  parseDate,
 } from './aiModels';
 
 describe('AI Models Provider', () => {
@@ -349,6 +351,153 @@ describe('AI Models Provider', () => {
         const hasLTS = cycles.some((c: AIModelCycle) => c.lts === true);
         expect(hasLTS).toBe(true);
       }
+    });
+  });
+
+  // SECURITY TESTS - Critical for handling untrusted input
+  describe('Security: stripHtmlTags', () => {
+    describe('Basic HTML stripping', () => {
+      it('should remove simple HTML tags', () => {
+        expect(stripHtmlTags('<p>Hello</p>')).toBe(' Hello ');
+        expect(stripHtmlTags('<div>Test</div>')).toBe(' Test ');
+      });
+
+      it('should remove tags with attributes', () => {
+        expect(stripHtmlTags('<a href="http://evil.com">Link</a>')).toBe(' Link ');
+        // Single tag becomes single space
+        const result = stripHtmlTags('<img src="x" onerror="alert(1)">');
+        expect(result).not.toContain('<');
+        expect(result).not.toContain('>');
+      });
+
+      it('should handle self-closing tags', () => {
+        expect(stripHtmlTags('<br/>')).toBe(' ');
+        expect(stripHtmlTags('<hr />')).toBe(' ');
+      });
+    });
+
+    describe('XSS Prevention', () => {
+      it('should neutralize script tags', () => {
+        const result = stripHtmlTags('<script>alert("XSS")</script>');
+        expect(result).not.toContain('<script>');
+        expect(result).not.toContain('</script>');
+        expect(result).not.toContain('<');
+        expect(result).not.toContain('>');
+      });
+
+      it('should handle nested script attempts', () => {
+        const result = stripHtmlTags('<<script>script>alert(1)<</script>/script>');
+        expect(result).not.toContain('<');
+        expect(result).not.toContain('>');
+      });
+
+      it('should remove event handler attributes context', () => {
+        const result = stripHtmlTags('<div onmouseover="alert(1)">hover</div>');
+        expect(result).not.toContain('onmouseover');
+        expect(result).not.toContain('<');
+      });
+
+      it('should handle malformed tags used for injection', () => {
+        // These are common XSS bypass attempts
+        expect(stripHtmlTags('<img src=x onerror=alert(1)>')).not.toContain('<');
+        expect(stripHtmlTags('<svg/onload=alert(1)>')).not.toContain('<');
+        expect(stripHtmlTags('<body onload=alert(1)>')).not.toContain('<');
+      });
+    });
+
+    describe('Edge cases and malformed input', () => {
+      it('should handle orphaned angle brackets', () => {
+        expect(stripHtmlTags('< orphan')).not.toContain('<');
+        expect(stripHtmlTags('orphan >')).not.toContain('>');
+        expect(stripHtmlTags('a < b > c')).not.toContain('<');
+        expect(stripHtmlTags('a < b > c')).not.toContain('>');
+      });
+
+      it('should handle deeply nested tags', () => {
+        const nested = '<div><div><div><span>deep</span></div></div></div>';
+        const result = stripHtmlTags(nested);
+        expect(result).not.toContain('<');
+        expect(result).not.toContain('>');
+        expect(result).toContain('deep');
+      });
+
+      it('should handle empty input', () => {
+        expect(stripHtmlTags('')).toBe('');
+      });
+
+      it('should handle input with no HTML', () => {
+        expect(stripHtmlTags('plain text')).toBe('plain text');
+      });
+
+      it('should handle Unicode in tags', () => {
+        const result = stripHtmlTags('<div>日本語</div>');
+        expect(result).not.toContain('<');
+        expect(result).toContain('日本語');
+      });
+
+      it('should handle newlines and whitespace in tags', () => {
+        const result = stripHtmlTags('<div\n  class="test"\n>content</div>');
+        expect(result).not.toContain('<');
+        expect(result).toContain('content');
+      });
+    });
+  });
+
+  describe('Security: parseDate', () => {
+    describe('Valid date formats', () => {
+      it('should parse "No sooner than MM/DD/YYYY" format', () => {
+        expect(parseDate('No sooner than 12/31/2025')).toBe('2025-12-31');
+        expect(parseDate('no sooner than 1/5/2024')).toBe('2024-01-05');
+      });
+
+      it('should parse "Month DD, YYYY" format', () => {
+        expect(parseDate('December 31, 2025')).toBe('2025-12-31');
+        expect(parseDate('January 1, 2024')).toBe('2024-01-01');
+      });
+
+      it('should parse "Earliest Month YYYY" format', () => {
+        expect(parseDate('Earliest January 2025')).toBe('2025-01-01');
+        expect(parseDate('earliest December 2024')).toBe('2024-12-01');
+      });
+
+      it('should return already formatted YYYY-MM-DD dates', () => {
+        expect(parseDate('2025-12-31')).toBe('2025-12-31');
+        expect(parseDate('2024-01-01')).toBe('2024-01-01');
+      });
+    });
+
+    describe('Invalid and edge case handling', () => {
+      it('should return null for empty input', () => {
+        expect(parseDate('')).toBeNull();
+      });
+
+      it('should return null for N/A', () => {
+        expect(parseDate('N/A')).toBeNull();
+      });
+
+      it('should return null for invalid formats', () => {
+        expect(parseDate('not a date')).toBeNull();
+        expect(parseDate('13/45/2025')).toBeNull(); // Invalid but may match regex
+      });
+
+      it('should handle null-like values safely', () => {
+        expect(parseDate(null as unknown as string)).toBeNull();
+        expect(parseDate(undefined as unknown as string)).toBeNull();
+      });
+    });
+
+    describe('Security considerations', () => {
+      it('should not execute code-like strings', () => {
+        // These shouldn't cause issues - just return null
+        expect(parseDate('javascript:alert(1)')).toBeNull();
+        expect(parseDate('<script>alert(1)</script>')).toBeNull();
+      });
+
+      it('should handle very long strings without crashing', () => {
+        const longString = 'A'.repeat(10000);
+        // Should complete without throwing
+        expect(() => parseDate(longString)).not.toThrow();
+      });
     });
   });
 });

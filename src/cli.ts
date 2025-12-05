@@ -133,15 +133,50 @@ program
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      console.error(chalk.red('\n✗ Failed to fetch EOL data'));
-      console.error(chalk.yellow(`Product: ${chalk.bold(product)}`));
       
-      if (errorMsg.includes('404') || errorMsg.includes('Not Found')) {
-        console.error(chalk.gray(`\nThe product "${product}" was not found on endoflife.date.`));
-        console.error(chalk.gray('Please check the product name and try again.'));
-        console.error(chalk.gray(`\nSearch for available products at: ${chalk.cyan('https://endoflife.date/api/all.json')}`));
+      // Check if this looks like an AI model query
+      const aiModelPatterns = [
+        /^(gpt|claude|gemini|llama|mistral|codestral|pixtral|command|mixtral|dall-e|o1|o3)/i,
+        /^(openai|anthropic|google|meta|mistral|cohere)$/i,
+      ];
+      
+      const looksLikeAIModel = aiModelPatterns.some(p => p.test(product));
+      
+      if (looksLikeAIModel) {
+        console.error(chalk.red('\n✗ AI Model not found'));
+        console.error(chalk.yellow(`Model: ${chalk.bold(product)}`));
+        console.error(chalk.gray(`\nThe AI model "${product}" was not found in our database.`));
+        
+        // Suggest similar models
+        const allModels: string[] = [];
+        for (const provider of getAllProviders()) {
+          const models = getProviderModels(provider);
+          allModels.push(...models.map(m => `${provider}/${m}`));
+        }
+        
+        // Find similar models
+        const similar = allModels.filter(m => 
+          m.toLowerCase().includes(product.toLowerCase().split('-')[0]) ||
+          product.toLowerCase().includes(m.split('/')[1]?.split('-')[0] || '')
+        ).slice(0, 5);
+        
+        if (similar.length > 0) {
+          console.error(chalk.gray('\nDid you mean one of these?'));
+          similar.forEach(m => console.error(chalk.cyan(`  - eol-check query ${m.replace('/', ' ')}`)));
+        }
+        
+        console.error(chalk.gray('\nList all AI providers: ') + chalk.cyan('eol-check query openai | anthropic | google | meta | mistral | cohere'));
       } else {
-        console.error(chalk.gray(`\nError: ${errorMsg}`));
+        console.error(chalk.red('\n✗ Failed to fetch EOL data'));
+        console.error(chalk.yellow(`Product: ${chalk.bold(product)}`));
+        
+        if (errorMsg.includes('404') || errorMsg.includes('Not Found')) {
+          console.error(chalk.gray(`\nThe product "${product}" was not found on endoflife.date.`));
+          console.error(chalk.gray('Please check the product name and try again.'));
+          console.error(chalk.gray(`\nSearch for available products at: ${chalk.cyan('https://endoflife.date/api/all.json')}`));
+        } else {
+          console.error(chalk.gray(`\nError: ${errorMsg}`));
+        }
       }
     }
     process.exit(0);
