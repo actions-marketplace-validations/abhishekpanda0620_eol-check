@@ -82,20 +82,18 @@ eol-check query google gemini-1.5-pro
 
 ## 🔮 v1.6 - Infrastructure & Custom Data (Planned)
 
-### Cloud Infrastructure Scanners
-**Status:** Planned  
+### v1.6: Cloud & Container Scanning (Current Focus)
+**Status:** ✅ Completed
 **Priority:** High
 
-Add scanners for cloud infrastructure configuration files. Note: EOL data for cloud services already exists in endoflife.date (aws-lambda, amazon-eks, amazon-rds-*, azure-kubernetes-service, google-kubernetes-engine, etc.).
-
-**Scanners to Add:**
-
-#### 1. Infrastructure File Detection
-- **Serverless Framework**: Scan `serverless.yml` for runtime versions
-- **AWS SAM**: Scan `template.yaml` for Lambda runtimes
-- **Terraform**: Scan `.tf` files for EKS/RDS/Lambda versions
-- **CloudFormation**: Scan templates for AWS resource versions
-- **Kubernetes**: Scan manifests for deprecated API versions
+- ✅ **Cloud Infrastructure Scanners**: Add scanners for cloud infrastructure configuration files. Note: EOL data for cloud services already exists in endoflife.date (aws-lambda, amazon-eks, amazon-rds-*, azure-kubernetes-service, google-kubernetes-engine, etc.).
+  - ✅ **Serverless Framework**: Scan `serverless.yml` for runtime versions
+  - ✅ **AWS SAM**: Scan `template.yaml` for Lambda runtimes
+  - ✅ **Terraform**: Scan `.tf` files for EKS/RDS/Lambda versions
+  - ✅ **CloudFormation**: Scan templates for AWS resource versions
+  - **Kubernetes**: Scan manifests for deprecated API versions (Planned)
+- ✅ **Dockerfile Base Image Scanner**: Scan `Dockerfile` to detect base images and their versions (e.g., `FROM node:18`, `FROM python:3.9-alpine`).
+- ✅ **Unified Configuration**: Support a configuration file to manage all flags, custom data, and exclusions.
 
 ```bash
 eol-check --scan-infra  # Scan infrastructure files
@@ -105,7 +103,7 @@ eol-check --scan-infra  # Scan infrastructure files
 
 
 ### Dockerfile Base Image Scanner
-**Status:** Planned  
+**Status:** ✅ Completed
 **Priority:** High
 
 Scan `Dockerfile` to detect base images and their versions (e.g., `FROM node:18`, `FROM python:3.9-alpine`).
@@ -295,16 +293,16 @@ Ensure production-ready stability before v2.0.
 ---
 
 ### Performance Optimization
-**Status:** Planned  
+**Status:** ✅ Completed
 **Priority:** High
 
-- Parallel scanning for large monorepos
-- Caching layer for API responses
+- ✅ Parallel scanning for large monorepos (Implemented in v1.6)
+- Caching layer for API responses (Existing)
 - Incremental scanning (only changed files)
 - Memory optimization for large projects
 
 ```bash
-eol-check --cache --parallel 4
+eol-check --cache --parallel 4 # (Implicitly parallel now)
 ```
 
 ---

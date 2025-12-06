@@ -85,6 +85,31 @@ export const PRODUCT_MAP: Record<string, string> = {
   'aws-sdk': 'amazon-eks',
   '@aws-sdk/client-s3': 'amazon-eks',
   '@google-cloud/storage': 'google-kubernetes-engine',
+  
+  // Docker Base Images
+
+  'golang': 'go',
+  'rust': 'rust',
+  'alpine': 'alpine',
+  'debian': 'debian',
+  'ubuntu': 'ubuntu',
+  'nginx': 'nginx',
+  'httpd': 'apache',
+  'mongo': 'mongodb',
+
+  'rabbitmq': 'rabbitmq',
+  'haproxy': 'haproxy',
+  'traefik': 'traefik',
+  'consul': 'consul',
+  'vault': 'vault',
+  'envoy': 'envoy',
+  'fluentd': 'fluentd',
+  'prometheus': 'prometheus',
+  'grafana': 'grafana',
+  
+  // Runtimes
+  'java': 'amazon-corretto', // AWS Lambda Java Runtime is based on Corretto
+  'dotnet': 'dotnet',
 };
 
 export function mapPackageToProduct(packageName: string): string | null {
