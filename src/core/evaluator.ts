@@ -12,6 +12,7 @@ export enum Category {
   SERVICE = 'System Services',
   DEPENDENCY = 'Project Dependencies',
   AI_MODEL = 'AI/ML Models',
+  INFRASTRUCTURE = 'Infrastructure',
 }
 
 export interface EvaluationResult {

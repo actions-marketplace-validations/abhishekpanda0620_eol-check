@@ -4,25 +4,33 @@ import chalk from 'chalk';
 import open from 'open';
 import { scanEnvironment } from './scanners/scannerEngine';
 import { fetchEolData } from './core/endoflifeApi';
-import { evaluateVersion, evaluateAIModel, Status, Category } from './core/evaluator';
+import { evaluateVersion, evaluateAIModel, Status, Category, EvaluationResult } from './core/evaluator';
 import { scanDependencies, cleanVersion } from './scanners/dependencyScanner';
 import { scanAIModels } from './scanners/aiModelScanner';
+import { scanDockerfiles } from './scanners/dockerScanner';
+import { scanInfrastructure } from './scanners/infrastructureScanner';
 import { getAIModelEolData, PROVIDER_NAMES, refreshAIModelData, getProviderModels, getAllProviders } from './providers/aiModels';
 import { mapPackageToProduct } from './core/productMapper';
+import { loadConfig } from './core/config';
 import { generateHtmlReport } from './reporters/htmlReporter';
 
 const program = new Command();
 
+
+
+
 program
   .name('eol-check')
   .description('Check End of Life (EOL) status of your development environment and project dependencies')
-  .version('1.5.2')
+  .version('1.6.0')
   .option('--json', 'Output results as JSON')
   .option('--html <filename>', 'Generate HTML report to specified file')
   .option('--no-browser', 'Do not open HTML report in browser')
   .option('--verbose', 'Show verbose output')
   .option('--refresh-cache', 'Force refresh cache from API')
   .option('--scan-ai', 'Scan for AI/ML model usage in code files')
+  .option('--scan-docker', 'Scan Dockerfiles for base image EOL')
+  .option('--scan-infra', 'Scan infrastructure files (Serverless, AWS SAM)')
   .action(async (cmdOptions) => {
     try {
       await main(cmdOptions);
@@ -185,7 +193,21 @@ program
 
 program.parse(process.argv);
 
-async function main(options: any) {
+async function main(cmdOptions: any) {
+  // Load configuration from file
+  const fileConfig = loadConfig();
+  
+  // Merge: CLI args take precedence over file config, file config takes precedence over defaults.
+  const options = {
+    ...fileConfig,
+    ...cmdOptions,
+    // Handle specific flags that might conflict or need explicit fallback
+    verbose: cmdOptions.verbose || fileConfig.verbose,
+    scanAi: cmdOptions.scanAi || fileConfig.scanAi,
+    scanDocker: cmdOptions.scanDocker || fileConfig.scanDocker,
+    scanInfra: cmdOptions.scanInfra || fileConfig.scanInfra,
+  };
+
   if (options.verbose) {
     console.log(chalk.blue('Scanning environment...'));
   }
@@ -197,149 +219,192 @@ async function main(options: any) {
   }
 
   const scanResult = scanEnvironment();
-  const results = [];
+  const results: EvaluationResult[] = [];
+  const promises: Promise<void>[] = [];
 
-  // Check Node.js
+  // 1. Check Node.js
   if (scanResult.nodeVersion) {
-    if (options.verbose)
-      console.log(`Checking Node.js ${scanResult.nodeVersion}...`);
-    const nodeData = await fetchEolData('nodejs', options.refreshCache);
-    const result = evaluateVersion('Node.js', scanResult.nodeVersion, nodeData);
-    result.category = Category.RUNTIME;
-    results.push(result);
+    promises.push((async () => {
+        if (options.verbose)
+            console.log(`Checking Node.js ${scanResult.nodeVersion}...`);
+        try {
+            const nodeData = await fetchEolData('nodejs', options.refreshCache);
+            const result = evaluateVersion('Node.js', scanResult.nodeVersion, nodeData);
+            result.category = Category.RUNTIME;
+            results.push(result);
+        } catch(e) { /* ignore or log? */ }
+    })());
   }
 
-  // Check OS (if detected)
+  // 2. Check OS
   if (scanResult.os && scanResult.os !== 'Unknown') {
-    // Note: OS matching is tricky with endoflife.date as they have specific slugs like 'ubuntu', 'alpine'.
-    // For now, we'll try to map common ones or skip if unsure.
-    // This is a simplified implementation for the prototype.
-    const osLower = scanResult.os.toLowerCase();
-    let product = '';
-    if (osLower.includes('ubuntu')) product = 'ubuntu';
-    else if (osLower.includes('alpine')) product = 'alpine';
-    else if (osLower.includes('debian')) product = 'debian';
+    promises.push((async () => {
+        const osLower = scanResult.os.toLowerCase();
+        let product = '';
+        if (osLower.includes('ubuntu')) product = 'ubuntu';
+        else if (osLower.includes('alpine')) product = 'alpine';
+        else if (osLower.includes('debian')) product = 'debian';
 
-    if (product) {
-      if (options.verbose)
-        console.log(`Checking OS ${scanResult.os} (mapped to ${product})...`);
-      
-      try {
-        const osData = await fetchEolData(product, options.refreshCache);
-        // Extract version from string like "Ubuntu 22.04.5 LTS" -> "22.04"
-        const versionMatch = scanResult.os.match(/(\d+(\.\d+)?)/);
-        if (versionMatch) {
-          const result = evaluateVersion(scanResult.os, versionMatch[0], osData);
-          result.category = Category.OS;
-          results.push(result);
+        if (product) {
+          if (options.verbose)
+            console.log(`Checking OS ${scanResult.os} (mapped to ${product})...`);
+          
+          try {
+            const osData = await fetchEolData(product, options.refreshCache);
+            const versionMatch = scanResult.os.match(/(\d+(\.\d+)?)/);
+            if (versionMatch) {
+              const result = evaluateVersion(scanResult.os, versionMatch[0], osData);
+              result.category = Category.OS;
+              results.push(result);
+            }
+          } catch (error) {
+            if (options.verbose) console.warn(chalk.yellow(`Warning: Could not fetch EOL data for OS ${scanResult.os}: ${error}`));
+          }
         }
-      } catch (error) {
-        if (options.verbose) {
-          console.warn(
-            chalk.yellow(
-              `Warning: Could not fetch EOL data for OS ${scanResult.os}: ${error}`,
-            ),
-          );
-        }
-      }
-    }
+    })());
   }
 
-  // Check System Services
+  // 3. Check System Services
   if (scanResult.services.length > 0) {
     if (options.verbose) console.log('Checking system services...');
-    for (const service of scanResult.services) {
-      if (options.verbose)
-        console.log(
-          `Checking service ${service.name} (${service.version})...`,
-        );
-      
-      try {
-        const eolData = await fetchEolData(service.product, options.refreshCache);
-        if (eolData && eolData.length > 0) {
-          const result = evaluateVersion(service.name, service.version, eolData);
-          result.category = Category.SERVICE;
-          results.push(result);
-        }
-      } catch (error) {
-        if (options.verbose) {
-          console.warn(
-            chalk.yellow(
-              `Warning: Could not fetch EOL data for ${service.name} (${service.product}): ${error}`,
-            ),
-          );
-        }
-      }
-    }
+    scanResult.services.forEach(service => {
+        promises.push((async () => {
+            if (options.verbose) console.log(`Checking service ${service.name} (${service.version})...`);
+            try {
+                const eolData = await fetchEolData(service.product, options.refreshCache);
+                if (eolData && eolData.length > 0) {
+                    const result = evaluateVersion(service.name, service.version, eolData);
+                    result.category = Category.SERVICE;
+                    results.push(result);
+                }
+            } catch (error) {
+                if (options.verbose) console.warn(chalk.yellow(`Warning: Could not fetch EOL data for ${service.name} (${service.product}): ${error}`));
+            }
+        })());
+    });
   }
 
-  // Check Project Dependencies
+  // 4. Check Project Dependencies
   if (options.verbose) console.log('Scanning project dependencies...');
   const dependencies = scanDependencies(process.cwd());
-  for (const dep of dependencies) {
-    const product = mapPackageToProduct(dep.name);
-    if (product) {
-      if (options.verbose)
-        console.log(`Checking dependency ${dep.name} (mapped to ${product})...`);
-      
-      try {
-        const eolData = await fetchEolData(product, options.refreshCache);
-        if (eolData && eolData.length > 0) {
-          const version = cleanVersion(dep.version);
-          const result = evaluateVersion(dep.name, version, eolData);
-          result.category = Category.DEPENDENCY;
-          results.push(result);
-        }
-      } catch (error) {
-        if (options.verbose) {
-          console.warn(
-            chalk.yellow(
-              `Warning: Could not fetch EOL data for ${dep.name}: ${error}`,
-            ),
-          );
-        } else {
-             console.warn(
-            chalk.yellow(
-              `Warning: Could not fetch EOL data for ${dep.name} (mapped to ${product}). Skipping...`,
-            ),
-          );
-        }
+  dependencies.forEach(dep => {
+      const product = mapPackageToProduct(dep.name);
+      if (product) {
+        promises.push((async () => {
+             if (options.verbose) console.log(`Checking dependency ${dep.name} (mapped to ${product})...`);
+             try {
+                const eolData = await fetchEolData(product, options.refreshCache);
+                if (eolData && eolData.length > 0) {
+                    const version = cleanVersion(dep.version);
+                    const result = evaluateVersion(dep.name, version, eolData);
+                    result.category = Category.DEPENDENCY;
+                    results.push(result);
+                }
+             } catch (error) {
+                if (options.verbose) {
+                    console.warn(chalk.yellow(`Warning: Could not fetch EOL data for ${dep.name}: ${error}`));
+                } else {
+                    console.warn(chalk.yellow(`Warning: Could not fetch EOL data for ${dep.name} (mapped to ${product}). Skipping...`));
+                }
+             }
+        })());
       }
-    }
-  }
+  });
 
-  // Check AI/ML Models (only if --scan-ai flag is provided)
+  // 5. Check AI/ML Models
   if (options.scanAi) {
-    if (options.verbose) console.log('Scanning for AI/ML models...');
-    const aiScanResult = scanAIModels(process.cwd());
-    
-    // Process detected SDKs
-    for (const sdk of aiScanResult.sdks) {
-      if (options.verbose) console.log(`Found AI SDK: ${sdk.sdk} (${sdk.provider})`);
-      // We don't evaluate SDKs directly here as they are covered by dependency scanner
-      // But we could add specific checks for SDK versions if needed
-    }
-
-    // Process detected Models
-    for (const model of aiScanResult.models) {
-      if (options.verbose) 
-        console.log(`Checking AI Model: ${model.provider}/${model.model} (${model.version}) found in ${model.source}`);
-      
-      const eolData = getAIModelEolData(model.provider, model.model);
-      if (eolData) {
-        const result = evaluateAIModel(
-          PROVIDER_NAMES[model.provider] || model.provider, 
-          model.model, 
-          model.version, 
-          eolData,
-          model.source
-        );
-        results.push(result);
-      } else if (options.verbose) {
-        console.warn(chalk.yellow(`Warning: No EOL data found for ${model.provider}/${model.model}`));
-      }
-    }
+     if (options.verbose) console.log('Scanning for AI/ML models...');
+     const aiScanResult = scanAIModels(process.cwd());
+     // SDKs - log only
+     if (options.verbose) {
+         aiScanResult.sdks.forEach(sdk => console.log(`Found AI SDK: ${sdk.sdk} (${sdk.provider})`));
+     }
+     
+     // Models
+     aiScanResult.models.forEach(model => {
+         if (options.verbose) console.log(`Checking AI Model: ${model.provider}/${model.model} (${model.version}) found in ${model.source}`);
+         const eolData = getAIModelEolData(model.provider, model.model);
+         if (eolData) {
+            const result = evaluateAIModel(
+               PROVIDER_NAMES[model.provider] || model.provider, 
+               model.model, 
+               model.version, 
+               eolData,
+               model.source
+            );
+            results.push(result);
+         } else if (options.verbose) {
+            console.warn(chalk.yellow(`Warning: No EOL data found for ${model.provider}/${model.model}`));
+         }
+     });
   }
+
+  // 6. Check Dockerfiles
+  if (options.scanDocker) {
+    if (options.verbose) console.log('Scanning Dockerfiles...');
+    const dockerDeps = scanDockerfiles(process.cwd());
+    dockerDeps.forEach(dep => {
+        promises.push((async () => {
+            const product = mapPackageToProduct(dep.name) || dep.name;
+            if (options.verbose) console.log(`Checking Docker image ${dep.name}:${dep.version} (mapped to ${product})...`);
+            
+            try {
+                const eolData = await fetchEolData(product, options.refreshCache);
+                if (eolData && eolData.length > 0) {
+                    const cleanVer = cleanVersion(dep.version);
+                    if (dep.version === 'latest') {
+                         results.push({
+                           component: dep.name,
+                           version: dep.version,
+                           status: Status.WARN,
+                           message: 'Using "latest" tag is not recommended. Please pin to a specific version.',
+                           category: Category.INFRASTRUCTURE,
+                           source: dep.file
+                       });
+                       return;
+                    }
+                    const result = evaluateVersion(dep.name, cleanVer, eolData);
+                    result.category = Category.INFRASTRUCTURE;
+                    result.source = dep.file;
+                    results.push(result);
+                }
+            } catch (error) {
+                if (options.verbose) {
+                    console.warn(chalk.yellow(`Warning: Could not fetch EOL data for Docker image ${dep.name}: ${error}`));
+                }
+            }
+        })());
+    });
+  }
+
+  // 7. Check Infrastructure
+  if (options.scanInfra) {
+    if (options.verbose) console.log('Scanning infrastructure files...');
+    const infraDeps = scanInfrastructure(process.cwd());
+    infraDeps.forEach(dep => {
+        promises.push((async () => {
+            const product = mapPackageToProduct(dep.name) || dep.name;
+            if (options.verbose) console.log(`Checking Infrastructure runtime ${dep.name} ${dep.version} (mapped to ${product})...`);
+            
+            try {
+                const eolData = await fetchEolData(product, options.refreshCache);
+                if (eolData && eolData.length > 0) {
+                     const result = evaluateVersion(dep.name, dep.version, eolData);
+                     result.category = Category.INFRASTRUCTURE;
+                     result.source = dep.file;
+                     results.push(result);
+                }
+            } catch (error) {
+                if (options.verbose) {
+                   console.warn(chalk.yellow(`Warning: Could not fetch EOL data for ${dep.name}: ${error}`));
+                }
+            }
+        })());
+    });
+  }
+
+  // Wait for all checks to complete
+  await Promise.all(promises);
 
   // Generate HTML report if requested
   if (options.html) {
@@ -363,7 +428,7 @@ async function main(options: any) {
     let hasError = false;
 
     // Group results by category
-    const categories = [Category.RUNTIME, Category.OS, Category.SERVICE, Category.DEPENDENCY, Category.AI_MODEL];
+    const categories = [Category.RUNTIME, Category.OS, Category.SERVICE, Category.DEPENDENCY, Category.AI_MODEL, Category.INFRASTRUCTURE];
     
     for (const category of categories) {
       const categoryResults = results.filter((r) => r.category === category);
@@ -391,8 +456,16 @@ async function main(options: any) {
       });
     }
 
-    if (hasError) {
+    if (hasError && (options.failOnEol !== false)) {
       process.exit(1);
+    }
+    
+    // Check for warnings exit
+    if (options.failOnWarning) {
+        const hasWarning = results.some(r => r.status === Status.WARN);
+        if (hasWarning) {
+             process.exit(1);
+        }
     }
   }
 }

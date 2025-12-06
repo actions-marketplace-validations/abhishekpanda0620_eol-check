@@ -12,7 +12,9 @@ A CLI tool to check the End-Of-Life (EOL) status of your development environment
 
 -   **Automated Detection**: Detects Node.js version, package manager (npm/yarn/pnpm), and OS (Ubuntu/Alpine/Debian).
 -   **System Service Scanning**: Detects and checks EOL status of local system services (Redis, PostgreSQL, Docker, etc.).
--   **AI/ML Model Tracking** *(v1.5.0)*: Scans for AI model usage and checks deprecation status for OpenAI, Anthropic, Google, Meta, Mistral, and Cohere models.
+-   **Infrastructure Scanning** *(v1.6.0)*: Scans Dockerfiles, Serverless configs, AWS SAM templates, Terraform files, and CloudFormation for EOL runtimes.
+-   **AI/ML Model Tracking**: Scans for AI model usage and checks deprecation status for OpenAI, Anthropic, Google, Meta, Mistral, and Cohere models.
+-   **Unified Configuration** *(v1.6.0)*: Configure all settings via `.eolrc.json` or `package.json`.
 -   **Real-time Data**: Fetches the latest EOL data from [endoflife.date](https://endoflife.date) and AI provider documentation.
 -   **Actionable Feedback**: clearly indicates if a component is supported, approaching EOL, or EOL.
 
@@ -79,8 +81,10 @@ eol-check query postgresql 14
 **Main Command Options:**
 - `--json`: Output results in JSON format (great for CI pipelines).
 - `--html <filename>`: Generate a beautiful HTML report with visualizations.
-- `--no-browser`: Don't automatically open HTML report in browser (v1.4.0+).
-- `--scan-ai`: Scan for AI/ML model usage in code files (v1.5.1+). Shows source file locations.
+- `--no-browser`: Don't automatically open HTML report in browser.
+- `--scan-ai`: Scan for AI/ML model usage in code files.
+- `--scan-docker`: Scan Dockerfiles for base image EOL (v1.6.0+).
+- `--scan-infra`: Scan infrastructure files (Serverless, AWS SAM, Terraform) (v1.6.0+).
 - `--verbose`: Show detailed logs of what is being scanned.
 - `--refresh-cache`: Force refresh of cached EOL data.
 - `--help`: Show help information.
@@ -88,11 +92,38 @@ eol-check query postgresql 14
 **Query Command Options:**
 - `--refresh-cache`: Force refresh of cached EOL data for the queried product.
 
+**Configuration File (.eolrc.json):**
+You can configure eol-check using a `.eolrc.json` file in your project root:
+
+```json
+{
+  "scanDocker": true,
+  "scanInfra": true,
+  "scanAi": true,
+  "failOnEol": true,
+  "failOnWarning": false,
+  "verbose": false
+}
+```
+
+Or in your `package.json`:
+
+```json
+{
+  "eol-check": {
+    "scanDocker": true,
+    "failOnWarning": true
+  }
+}
+```
+
 ## Supported Scanners
 
 | Language | File | Supported Frameworks/Tools |
 |----------|------|-------------------------------|
 | Node.js | `package.json` | React, Vue, Angular, Next.js, Nuxt, Ember, Svelte, jQuery, Bootstrap, TailwindCSS, Electron, React Native, Express, ESLint, Protractor, Grunt |
+| Infrastructure | `serverless.yml`, `template.yaml`, `.tf` | Serverless Framework, AWS SAM, Terraform, CloudFormation, AWS Lambda Runtimes |
+| Containers | `Dockerfile` | Node, Python, Alpine, Ubuntu, Nginx, Mongo, Java, Dotnet, Go base images |
 | PHP | `composer.json` | Laravel, Symfony, Drupal, Magento, Typo3, PHP, Composer |
 | Python | `requirements.txt` | Django, Python, Ansible, Kubernetes |
 | Go | `go.mod` | Go |

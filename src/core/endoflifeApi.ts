@@ -15,6 +15,8 @@ export interface EolCycle {
 
 const cache = new Cache();
 
+const inFlightRequests = new Map<string, Promise<EolCycle[]>>();
+
 export async function fetchEolData(
   product: string,
   refreshCache = false,
@@ -26,22 +28,35 @@ export async function fetchEolData(
       return cached as EolCycle[];
     }
   }
-
-  // Fetch from API
-  try {
-    const response = await axios.get<EolCycle[]>(
-      `https://endoflife.date/api/${product}.json`,
-    );
-    // Save to cache
-    cache.set(product, response.data);
-    return response.data;
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      if (error.response?.status === 404) {
-        throw new Error(`Product "${product}" not found on endoflife.date (404)`);
-      }
-      throw new Error(`Failed to fetch EOL data for ${product}: HTTP ${error.response?.status || 'Error'}`);
-    }
-    throw new Error(`Failed to fetch EOL data for ${product}: ${error}`);
+  
+  // Check if there is already a request in flight
+  if (inFlightRequests.has(product)) {
+      return inFlightRequests.get(product)!;
   }
+
+  // Create new request promise
+  const requestPromise = (async () => {
+      try {
+        const response = await axios.get<EolCycle[]>(
+          `https://endoflife.date/api/${product}.json`,
+        );
+        // Save to cache
+        cache.set(product, response.data);
+        return response.data;
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          if (error.response?.status === 404) {
+            throw new Error(`Product "${product}" not found on endoflife.date (404)`);
+          }
+          throw new Error(`Failed to fetch EOL data for ${product}: HTTP ${error.response?.status || 'Error'}`);
+        }
+        throw new Error(`Failed to fetch EOL data for ${product}: ${error}`);
+      } finally {
+          // Cleanup in-flight request
+          inFlightRequests.delete(product);
+      }
+  })();
+
+  inFlightRequests.set(product, requestPromise);
+  return requestPromise;
 }
