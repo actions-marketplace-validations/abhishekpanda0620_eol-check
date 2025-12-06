@@ -1,6 +1,6 @@
 {
   "name": "eol-check",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "CLI tool to check End-of-Life (EOL) status of code, infrastructure, containers, and AI models. Supports Docker, Terraform, AWS, Serverless, and more.",
   "main": "dist/index.js",
   "bin": {

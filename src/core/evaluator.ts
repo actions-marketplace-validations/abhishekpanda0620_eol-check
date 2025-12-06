@@ -55,9 +55,13 @@ export function evaluateVersion(
   // 4. Try matching input version against EOL cycles that start with major (e.g. input "4" matches EOL "4.0")
   if (!cycle) {
     const major = version.split('.')[0];
-    // If input is major-only (e.g., "4"), try to find a cycle that starts with "4." or is exactly "4"
-    if (!version.includes('.')) {
-      cycle = eolData.find((c) => c.cycle === `${major}.0` || c.cycle.startsWith(`${major}.`));
+    
+    // Prioritize finding an exact "<major>.0" cycle, which often represents the major release series
+    cycle = eolData.find((c) => c.cycle === `${major}.0`);
+    
+    // If not found, look for any cycle starting with "<major>." (e.g. "29.1.2" matching "29.0" or "29.5")
+    if (!cycle) {
+        cycle = eolData.find((c) => c.cycle.startsWith(`${major}.`));
     }
   }
   

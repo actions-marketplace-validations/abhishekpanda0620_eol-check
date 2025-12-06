@@ -203,7 +203,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: abhishekpanda0620/eol-check@v1.5.1
+      - uses: abhishekpanda0620/eol-check@v1.6.1
         with:
           generate-html: true
           scan-ai: true  # Optional: Enable AI model scanning
