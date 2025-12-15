@@ -6,13 +6,16 @@
 [![codecov](https://codecov.io/gh/abhishekpanda0620/eol-check/branch/main/graph/badge.svg)](https://codecov.io/gh/abhishekpanda0620/eol-check)
 
 
-A CLI tool to check the End-Of-Life (EOL) status of your development environment and project dependencies.
+A CLI tool to check the End-Of-Life (EOL) status of your development environment, project dependencies, and AI/ML models.
 
 ## Features
 
 -   **Automated Detection**: Detects Node.js version, package manager (npm/yarn/pnpm), and OS (Ubuntu/Alpine/Debian).
 -   **System Service Scanning**: Detects and checks EOL status of local system services (Redis, PostgreSQL, Docker, etc.).
--   **Real-time Data**: Fetches the latest EOL data from [endoflife.date](https://endoflife.date).
+-   **Infrastructure Scanning** *(v1.6.0)*: Scans Dockerfiles, Serverless configs, AWS SAM templates, Terraform files, and CloudFormation for EOL runtimes.
+-   **AI/ML Model Tracking**: Scans for AI model usage and checks deprecation status for OpenAI, Anthropic, Google, Meta, Mistral, and Cohere models.
+-   **Unified Configuration** *(v1.6.0)*: Configure all settings via `.eolrc.json` or `package.json`.
+-   **Real-time Data**: Fetches the latest EOL data from [endoflife.date](https://endoflife.date) and AI provider documentation.
 -   **Actionable Feedback**: clearly indicates if a component is supported, approaching EOL, or EOL.
 
 ## Installation
@@ -29,22 +32,29 @@ npm install -g eol-check
 npm install --save-dev eol-check
 ```
 
-When installed locally, use the provided npm scripts to avoid conflicts with global installations:
-
+**Option 1: Run with npx (Recommended)**
 ```bash
-# Check version
-npm run check:version
+npx eol-check
+```
 
-# Run EOL check
+**Option 2: Add to package.json**
+Add the following to your `package.json` scripts:
+```json
+{
+  "scripts": {
+    "check": "eol-check"
+  }
+}
+```
+
+Then you can run:
+```bash
 npm run check
-
-# Run with options (use -- to pass arguments)
-npm run check -- --verbose
-npm run check -- --json
-npm run check -- --refresh-cache
 ```
 
 ## Usage
+
+### Basic Scan
 
 Run the tool in any project directory:
 
@@ -52,36 +62,118 @@ Run the tool in any project directory:
 eol-check
 ```
 
+### Query Specific Products
+
+Query EOL status for specific products/services:
+
+```bash
+# Query all versions of a product
+eol-check query nodejs
+
+# Query specific version
+eol-check query nodejs 18
+eol-check query python 3.9
+eol-check query postgresql 14
+```
+
 ### Options
 
+**Main Command Options:**
 - `--json`: Output results in JSON format (great for CI pipelines).
 - `--html <filename>`: Generate a beautiful HTML report with visualizations.
+- `--no-browser`: Don't automatically open HTML report in browser.
+- `--scan-ai`: Scan for AI/ML model usage in code files.
+- `--scan-docker`: Scan Dockerfiles for base image EOL (v1.6.0+).
+- `--scan-infra`: Scan infrastructure files (Serverless, AWS SAM, Terraform) (v1.6.0+).
 - `--verbose`: Show detailed logs of what is being scanned.
 - `--refresh-cache`: Force refresh of cached EOL data.
 - `--help`: Show help information.
+
+**Query Command Options:**
+- `--refresh-cache`: Force refresh of cached EOL data for the queried product.
+
+**Configuration File (.eolrc.json):**
+You can configure eol-check using a `.eolrc.json` file in your project root:
+
+```json
+{
+  "scanDocker": true,
+  "scanInfra": true,
+  "scanAi": true,
+  "failOnEol": true,
+  "failOnWarning": false,
+  "verbose": false
+}
+```
+
+Or in your `package.json`:
+
+```json
+{
+  "eol-check": {
+    "scanDocker": true,
+    "failOnWarning": true
+  }
+}
+```
 
 ## Supported Scanners
 
 | Language | File | Supported Frameworks/Tools |
 |----------|------|-------------------------------|
-| Node.js | `package.json` | React, Vue, Angular, Next.js, Nuxt, NestJS, Ember, Svelte, TypeScript, jQuery, Bootstrap, TailwindCSS, Electron, Jest, Mocha, Cypress, Playwright, Webpack, Vite, Rollup, ESLint |
-| PHP | `composer.json` | Laravel, Symfony, Drupal, Magento, Typo3, PHP |
-| Python | `requirements.txt` | Django, Flask, Python, Ansible, Kubernetes, Pytest |
-| Go | `go.mod` | Go, Gin, Fiber |
-| Ruby | `Gemfile` | Ruby, Rails, Jekyll, Bundler |
+| Node.js | `package.json` | React, Vue, Angular, Next.js, Nuxt, Ember, Svelte, jQuery, Bootstrap, TailwindCSS, Electron, React Native, Express, ESLint, Protractor, Grunt |
+| Infrastructure | `serverless.yml`, `template.yaml`, `.tf` | Serverless Framework, AWS SAM, Terraform, CloudFormation, AWS Lambda Runtimes |
+| Containers | `Dockerfile` | Node, Python, Alpine, Ubuntu, Nginx, Mongo, Java, Dotnet, Go base images |
+| PHP | `composer.json` | Laravel, Symfony, Drupal, Magento, Typo3, PHP, Composer |
+| Python | `requirements.txt` | Django, Python, Ansible, Kubernetes |
+| Go | `go.mod` | Go |
+| Ruby | `Gemfile` | Ruby, Rails, Jekyll |
 | Databases | Various | PostgreSQL, MySQL, MongoDB, Redis, MariaDB, Elasticsearch, Memcached, Cassandra, Neo4j, SQLite, CouchDB |
-| Build Tools | Various | Gradle, Maven, Ant, Bazel, Grunt |
+| Build Tools | Various | Gradle, Maven, Ant, Bazel |
+| Container/DevOps | Binary Check | Docker, Containerd, Podman |
 | System Services | Binary Check | Redis, PostgreSQL, MySQL, MongoDB, Docker, Git, Python, Java, Go |
+| AI/ML Models | Code & Config | OpenAI (GPT), Anthropic (Claude), Google (Gemini), Meta (Llama), Mistral, Cohere |
 
 ### Example Output
 
 ```text
-Scanning environment...
-
 EOL Check Results:
-[OK] Node.js v18.16.0 - Version 18 is supported (ends 2025-04-30)
+
+── Runtime Environment ──
+[OK] Node.js 18.16.0 - Version 18 is supported (ends 2025-04-30)
+
+── Operating System ──
 [WARN] Ubuntu 20.04 - Version 20 is approaching EOL (ends 2025-04-02)
+
+── System Services ──
+[OK] redis-server 7.4.1 - Version 7.4 is supported (ends 2026-11-30)
+[OK] psql 17.6 - Version 17 is supported (ends 2029-11-08)
+[ERR] go 1.18.1 - Version 1.18 is EOL (ended 2023-02-01)
+
+── Project Dependencies ──
+[OK] eslint 9.15.0 - Version 9 is supported (ends unknown)
 ```
+
+### AI Model Scanning (--scan-ai)
+
+Scan your codebase for AI/ML model usage:
+
+```bash
+eol-check --scan-ai
+```
+
+```text
+── AI/ML Models ──
+[WARN] OpenAI/gpt-4 latest - Model version latest not found... (in src/api/client.ts)
+[OK] OpenAI/gpt-4o latest - Model is supported (LTS) (in src/services/chat.ts)
+[OK] Anthropic/claude-sonnet-4 latest - Model is supported (LTS) (in config/models.json)
+[WARN] Google/gemini-2.0-flash latest - Model version latest not found... (in .env)
+```
+
+The scanner detects model usage in:
+- **Code files**: `.ts`, `.tsx`, `.js`, `.jsx`, `.py`
+- **Config files**: `.json`, `.yaml`, `.yml`
+- **Environment files**: `.env`, `.env.local`, `.env.production`
 
 ## HTML Reports
 
@@ -111,9 +203,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: abhishekpanda0620/eol-check@v1.3.2
+      - uses: abhishekpanda0620/eol-check@v1.6.1
         with:
           generate-html: true
+          scan-ai: true  # Optional: Enable AI model scanning
 ```
 
 **See [GitHub Action Documentation](.github/ACTION-README.md) for:**

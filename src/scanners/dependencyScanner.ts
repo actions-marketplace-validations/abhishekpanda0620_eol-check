@@ -4,7 +4,7 @@ import path from 'path';
 export interface Dependency {
   name: string;
   version: string;
-  type: 'npm' | 'composer' | 'python' | 'go' | 'ruby';
+  type: 'npm' | 'composer' | 'python' | 'go' | 'ruby' | 'docker' | 'infrastructure';
   file: string;
 }
 

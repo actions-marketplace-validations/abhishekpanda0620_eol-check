@@ -1,7 +1,7 @@
 {
   "name": "eol-check",
-  "version": "1.3.2",
-  "description": "CLI tool to check End-of-Life (EOL) status of Node.js, package managers, operating systems, dependencies, and databases. Supports HTML reports and GitHub Actions.",
+  "version": "1.6.1",
+  "description": "CLI tool to check End-of-Life (EOL) status of code, infrastructure, containers, and AI models. Supports Docker, Terraform, AWS, Serverless, and more.",
   "main": "dist/index.js",
   "bin": {
     "eol-check": "dist/cli.js"
@@ -22,9 +22,27 @@
   "keywords": [
     "eol",
     "end-of-life",
-    "cli",
+    "deprecation",
+    "security-audit",
+    "scanner",
+    "devops",
+    "compliance",
+    "infrastructure-as-code",
+    "docker",
+    "container",
+    "terraform",
+    "aws",
+    "serverless",
+    "kubernetes",
+    "ai",
+    "llm",
+    "openai",
+    "anthropic",
+    "nodejs",
+    "python",
+    "dependency-check",
     "version-check",
-    "security"
+    "static-analysis"
   ],
   "author": "Abhishek Panda <abhishekpanda0620@gmail.com>",
   "license": "MIT",
@@ -40,6 +58,7 @@
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^24.10.1",
+    "@types/open": "^6.1.0",
     "@typescript-eslint/eslint-plugin": "^8.48.0",
     "@typescript-eslint/parser": "^8.48.0",
     "eslint": "^9.15.0",
@@ -54,6 +73,7 @@
   "dependencies": {
     "axios": "^1.13.2",
     "chalk": "^4.1.2",
-    "commander": "^14.0.2"
+    "commander": "^14.0.2",
+    "open": "^11.0.0"
   }
 }
