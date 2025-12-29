@@ -1,0 +1,5 @@
+title: EOL-Check
+description: CLI tool to check End-of-Life (EOL) status of code, infrastructure, and AI models.
+theme: minima
+plugins:
+  - jekyll-seo-tag
